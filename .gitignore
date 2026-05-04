@@ -20,4 +20,5 @@ main.a
 build_hook.go
 *.md
 !LICENSE
+!README_FA.md
 !.bat
