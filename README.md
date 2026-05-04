@@ -4,9 +4,6 @@
 **[فارسی](README_FA.md)**
 
 
-#### Disclaimer
-
-- **Google services compliance:** If you use Google Apps Script or other Google services with this project, you are responsible for complying with Google's Terms of Service, acceptable use rules, quotas, and platform policies. Misuse may lead to suspension or termination of your Google account or deployments.
 
 
 ## 🚀 Improvements Over Python Version
@@ -139,7 +136,16 @@ go build -ldflags "-s -w" -o mhr-cfw-go.exe ./cmd/mhr-cfw
 | `--setup` | Run setup wizard |
 | `--version` | Show version |
 
+#### Disclaimer
+
+- **Google services compliance:** If you use Google Apps Script or other Google services with this project, you are responsible for complying with Google's Terms of Service, acceptable use rules, quotas, and platform policies. Misuse may lead to suspension or termination of your Google account or deployments.
 ---
+
+## Original Projects
+### Based on [mhr-cfw](https://github.com/denuitt1/mhr-cfw), The Python implementation this project was rewritten from.
+
+
+
 ## License
 
 MIT
