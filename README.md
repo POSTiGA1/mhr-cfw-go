@@ -1,58 +1,118 @@
 # MHR-CFW Go
 
-A domain-fronted HTTP/HTTPS proxy relay suite for Apps Script written in Go.
+[![GitHub](https://img.shields.io/badge/GitHub-ThisIsDara-blue?logo=github)](https://github.com/ThisIsDara/mhr-cfw-go)
 
-## Features
+## Disclaimer
 
-- **HTTP Proxy** - Local proxy server with CONNECT tunnel support
-- **SOCKS5 Proxy** - Built-in SOCKS5 server
-- **Domain Fronting** - Google Apps Script relay via domain-fronted requests
-- **MITM Proxy** - Dynamic certificate generation for HTTPS interception
-- **HTTP/2 Transport** - Performance-optimized HTTP/2 connections
-- **TUI Menu** - Interactive terminal menu for easy operation
+`mhr-cfw-go` is provided for educational, testing, and research purposes only.
 
-## Usage
+- **Provided without warranty:** This software is provided "AS IS", without express or implied warranty, including merchantability, fitness for a particular purpose, and non-infringement.
+- **Limitation of liability:** The developers and contributors are not responsible for any direct, indirect, incidental, consequent, or other damages resulting from the use of this project or the inability to use it.
+- **User responsibility:** Running this project outside controlled test environments may affect networks, accounts, proxies, certificates, or connected systems. You are solely responsible for installation, configuration, and use.
+- **Legal compliance:** You are responsible for complying with all local, national, and international laws and regulations before using this software.
+- **Google services compliance:** If you use Google Apps Script or other Google services with this project, you are responsible for complying with Google's Terms of Service, acceptable use rules, quotas, and platform policies. Misuse may lead to suspension or termination of your Google account or deployments.
+- **License terms:** Use, copying, distribution, and modification of this software are governed by the repository license. Any use outside those terms is prohibited.
 
-```powershell
-# Run with TUI menu
-.\mhr-cfw-go.exe
+---
 
-# Run proxy directly (requires configured config.json)
-.\mhr-cfw-go.exe --no-menu
+## How It Works
 
-# Install CA certificate
-.\mhr-cfw-go.exe --install-cert
-
-# Scan Google IPs
-.\mhr-cfw-go.exe --scan
-
-# Show version
-.\mhr-cfw-go.exe --version
+```
+Client -> Local Proxy -> Google front -> Google Apps Script -> Target website
+               |
+               +-> shows www.google.com to the network DPI filter
 ```
 
-## Configuration
+The Go proxy runs locally on your machine and forwards traffic through Google's infrastructure.
+The network only sees allowed domains like `www.google.com` while your actual traffic is hidden inside the relay request.
 
-Edit `config.json` before running:
+---
+
+## How to Use
+
+### 1 - Download and Build
+
+```bash
+git clone https://github.com/ThisIsDara/mhr-cfw-go.git
+cd mhr-cfw-go
+go build -o mhr-cfw-go.exe ./cmd/mhr-cfw
+```
+
+### 2 - Set Up Google Apps Script Relay
+
+1. Open [Google Apps Script](https://script.google.com/) and sign in.
+2. Click **New project**.
+3. Open the [`Code.gs`](script/Code.gs) file from this project, **copy everything**, and paste into the editor.
+4. Change the password on this line:
+   ```javascript
+   const AUTH_KEY = "your-secret-password-here";
+   ```
+5. Click **Deploy** → **New deployment**.
+6. Choose **Web app** as the type.
+7. Set:
+   - **Execute as:** Me
+   - **Who has access:** Anyone
+8. Click **Deploy**.
+9. **Copy the Deployment ID** (long random string).
+
+### 3 - Configure
+
+Edit `config.json`:
 
 ```json
 {
-  "auth_key": "your-secret-key",
-  "script_id": "YOUR_APPS_SCRIPT_DEPLOYMENT_ID",
-  "front_domain": "www.google.com",
-  "google_ip": "216.239.38.120"
+  "auth_key": "your-secret-password-here",
+  "script_id": "YOUR_DEPLOYMENT_ID"
 }
 ```
 
-## Requirements
-
-- Go 1.21+
-- Windows (for certificate installation)
-
-## Building
+### 4 - Run
 
 ```powershell
-go build -o mhr-cfw-go.exe ./cmd/mhr-cfw
+.\mhr-cfw-go.exe
 ```
+
+The proxy will start on `127.0.0.1:8080`. Use [FoxyProxy](https://getfoxyproxy.org/) to route browser traffic through it.
+
+### 5 - Install CA Certificate (for HTTPS interception)
+
+From the menu, select **Install CA certificate** or run:
+
+```powershell
+.\mhr-cfw-go.exe --install-cert
+```
+
+---
+
+## Command Line Options
+
+| Option | Description |
+| --- | --- |
+| `--no-menu` | Run without TUI menu |
+| `--port` | Override proxy port |
+| `--host` | Override listen host |
+| `--socks5-port` | Override SOCKS5 port |
+| `--disable-socks5` | Disable SOCKS5 proxy |
+| `--log-level` | Set log level (DEBUG, INFO, WARN, ERROR) |
+| `--install-cert` | Install CA certificate |
+| `--uninstall-cert` | Remove CA certificate |
+| `--scan` | Scan Google IPs |
+| `--setup` | Run setup wizard |
+| `--version` | Show version |
+
+---
+
+## Features
+
+- HTTP/HTTPS proxy with CONNECT tunnel
+- SOCKS5 proxy
+- Domain fronting via Google Apps Script
+- MITM proxy with dynamic certificates
+- HTTP/2 transport
+- Interactive TUI menu
+- LAN sharing support
+
+---
 
 ## License
 
