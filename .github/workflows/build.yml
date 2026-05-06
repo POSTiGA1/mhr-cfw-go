@@ -23,19 +23,19 @@ jobs:
 
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
-        run: GOOS=linux go build -ldflags "-s -w" -o mhr-cfw-go ./cmd/mhr-cfw
+        run: GOOS=linux go build -ldflags "-s -w" -o mhr-cfw-go-linux ./cmd/mhr-cfw
 
       - name: Build Windows
         if: matrix.os == 'windows-latest'
-        run: go build -ldflags "-s -w" -o mhr-cfw-go.exe ./cmd/mhr-cfw
+        run: go build -ldflags "-s -w" -o mhr-cfw-go-windows.exe ./cmd/mhr-cfw
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mhr-cfw-go-${{ matrix.os }}
           path: |
-            mhr-cfw-go.exe
-            mhr-cfw-go
+            mhr-cfw-go-windows.exe
+            mhr-cfw-go-linux
 
   release:
     needs: build
@@ -62,8 +62,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            mhr-cfw-go.exe
-            mhr-cfw-go
+            mhr-cfw-go-windows.exe
+            mhr-cfw-go-linux
           body: "Built from commit ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
