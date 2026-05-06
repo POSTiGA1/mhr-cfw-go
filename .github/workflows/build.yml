@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Windows
         if: matrix.os == 'windows-latest'
-        run: GOOS=windows go build -ldflags "-s -w" -o mhr-cfw-go.exe ./cmd/mhr-cfw
+        run: go build -ldflags "-s -w" -o mhr-cfw-go.exe ./cmd/mhr-cfw
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
