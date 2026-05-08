@@ -507,7 +507,13 @@ func (f *DomainFronter) buildPayload(method, urlStr string, headers map[string]s
 		"r": false,
 	}
 	if headers != nil {
-		p["h"] = headers
+		filtered := make(map[string]string)
+		for k, v := range headers {
+			if strings.ToLower(k) != "accept-encoding" {
+				filtered[k] = v
+			}
+		}
+		p["h"] = filtered
 	}
 	if len(body) > 0 {
 		p["b"] = base64.StdEncoding.EncodeToString(body)

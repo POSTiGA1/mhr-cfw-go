@@ -9,7 +9,28 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+          - os: windows-latest
+            goos: windows
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: 386
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -21,21 +42,18 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Build Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: GOOS=linux go build -ldflags "-s -w" -o mhr-cfw-go-linux ./cmd/mhr-cfw
+      - name: Build
+        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags "-s -w" -o mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/mhr-cfw
 
-      - name: Build Windows
-        if: matrix.os == 'windows-latest'
-        run: go build -ldflags "-s -w" -o mhr-cfw-go-windows.exe ./cmd/mhr-cfw
+      - name: Rename Windows executable
+        if: matrix.goos == 'windows'
+        run: Move-Item mhr-cfw-go-windows-${{ matrix.goarch }} mhr-cfw-go-windows-${{ matrix.goarch }}.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mhr-cfw-go-${{ matrix.os }}
-          path: |
-            mhr-cfw-go-windows.exe
-            mhr-cfw-go-linux
+          name: mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }}*
 
   release:
     needs: build
@@ -46,24 +64,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Linux artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: mhr-cfw-go-ubuntu-latest
           path: .
 
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: mhr-cfw-go-windows-latest
-          path: .
+      - name: List artifacts
+        run: Get-ChildItem -Recurse -File | Select-Object -ExpandProperty FullName
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            mhr-cfw-go-windows.exe
-            mhr-cfw-go-linux
+          files: mhr-cfw-go-*
           body: "Built from commit ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
