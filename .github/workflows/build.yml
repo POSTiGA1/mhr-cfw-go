@@ -89,15 +89,15 @@ jobs:
         with:
           files: ./binaries/*
           body: |
-            Changelog
-            Improvements
+            ## Bug Fixes
+            - Updated version to 1.4.0.
+            - Improved graceful shutdown by closing active client connections on stop.
+
+            ## Improvements
             - Added startup prewarm to keep Apps Script containers hot for faster first requests.
             - Added periodic keepalive ping to reduce idle latency spikes.
             - Tuned HTTP/2 transport with idle and ping timeouts for more stable performance.
             - Enabled static asset cache fast-path to reduce repeated relay calls.
-            Fixes
-            - Updated version to 1.4.0.
-            - Improved graceful shutdown by closing active client connections on stop.
             🦢
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
