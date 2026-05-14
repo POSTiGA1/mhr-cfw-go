@@ -47,6 +47,10 @@ jobs:
         run: |
           export GOOS=${{ matrix.goos }}
           export GOARCH=${{ matrix.goarch }}
+          if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then
+            echo "Skipping unsupported windows/arm64"
+            exit 0
+          fi
           go build -ldflags "-s -w" -o mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/mhr-cfw
 
       - name: Rename Windows executable
@@ -55,6 +59,7 @@ jobs:
         run: mv mhr-cfw-go-windows-${{ matrix.goarch }} mhr-cfw-go-windows-${{ matrix.goarch }}.exe
 
       - name: Upload artifact
+        if: matrix.goos != 'windows' || matrix.goarch != 'arm64'
         uses: actions/upload-artifact@v4
         with:
           name: mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }}
@@ -84,13 +89,15 @@ jobs:
         with:
           files: ./binaries/*
           body: |
-            ## Bug Fixes
-            - Fixed Telegram API connectivity issues
-            - Fixed encoding issues on some websites (brotli/zstd decompression)
-
-            ## Improvements
-            - Better compatibility with Google Apps Script relay
-
+            Changelog
+            Improvements
+            - Added startup prewarm to keep Apps Script containers hot for faster first requests.
+            - Added periodic keepalive ping to reduce idle latency spikes.
+            - Tuned HTTP/2 transport with idle and ping timeouts for more stable performance.
+            - Enabled static asset cache fast-path to reduce repeated relay calls.
+            Fixes
+            - Updated version to 1.4.0.
+            - Improved graceful shutdown by closing active client connections on stop.
             🦢
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 package constants
 
-const Version = "1.1.0"
+const Version = "1.4.0"
 
 const (
 	MaxRequestBodyBytes  = 100 * 1024 * 1024
@@ -84,6 +84,10 @@ var FrontSNIPoolGoogle = []string{
 const (
 	StatsLogInterval = 300.0
 	StatsLogTopN     = 10
+)
+
+const (
+	KeepaliveInterval = 240.0
 )
 
 var GoogleDirectExactExclude = map[string]struct{}{

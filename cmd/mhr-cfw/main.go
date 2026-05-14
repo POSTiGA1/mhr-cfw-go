@@ -91,6 +91,7 @@ func main() {
 func runMenu(a *args) error {
 	menu := &tui.Menu{
 		Title: "mhr-cfw",
+		Version: constants.Version,
 		Options: []tui.Option{
 			{Key: 1, Label: "Start proxy", Handler: func() error { return runProxy(a) }},
 			{Key: 2, Label: "Setup wizard", Handler: func() error { return setup.RunInteractiveWizard(a.configPath) }},

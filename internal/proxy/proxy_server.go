@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"net/textproto"
 	"regexp"
 	"strconv"
@@ -153,6 +154,8 @@ type Server struct {
 	mu              sync.Mutex
 
 	servers []net.Listener
+	conns   map[net.Conn]struct{}
+	connMu  sync.Mutex
 	wg      sync.WaitGroup
 	ctx     context.Context
 }
@@ -177,6 +180,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mitm:           mitm.NewManager(),
 		cache:          NewResponseCache(constants.CacheMaxMB),
 		directFailUntil: map[string]time.Time{},
+		conns:          map[net.Conn]struct{}{},
 	}, nil
 }
 
@@ -214,6 +218,7 @@ func (s *Server) Start(ctx context.Context) error {
 	for _, l := range s.servers {
 		_ = l.Close()
 	}
+	s.closeAllConns()
 	_ = s.fronter.Close()
 	s.wg.Wait()
 	log.Infof("Server stopped")
@@ -233,8 +238,34 @@ func (s *Server) acceptLoop(ln net.Listener, handler func(net.Conn)) {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
+			s.trackConn(conn)
+			defer s.untrackConn(conn)
 			handler(conn)
 		}()
+	}
+}
+
+func (s *Server) trackConn(conn net.Conn) {
+	s.connMu.Lock()
+	s.conns[conn] = struct{}{}
+	s.connMu.Unlock()
+}
+
+func (s *Server) untrackConn(conn net.Conn) {
+	s.connMu.Lock()
+	delete(s.conns, conn)
+	s.connMu.Unlock()
+}
+
+func (s *Server) closeAllConns() {
+	s.connMu.Lock()
+	conns := make([]net.Conn, 0, len(s.conns))
+	for conn := range s.conns {
+		conns = append(conns, conn)
+	}
+	s.connMu.Unlock()
+	for _, conn := range conns {
+		_ = conn.Close()
 	}
 }
 
@@ -341,7 +372,23 @@ func (s *Server) relayHTTPStream(host string, port int, conn net.Conn) {
 			continue
 		}
 
+		if s.cacheAllowed(method, urlStr, headerMap, body) {
+			if cached := s.cache.Get(urlStr); cached != nil {
+				if origin != "" {
+					cached = injectCORSHeaders(cached, origin)
+				}
+				_, _ = conn.Write(cached)
+				continue
+			}
+		}
+
 		response := s.fronter.Relay(method, urlStr, headerMap, body)
+		if s.cacheAllowed(method, urlStr, headerMap, body) {
+			ttl := s.cache.ParseTTL(response, urlStr)
+			if ttl > 0 {
+				s.cache.Put(urlStr, response, ttl)
+			}
+		}
 		if origin != "" {
 			response = injectCORSHeaders(response, origin)
 		}
@@ -367,7 +414,23 @@ func (s *Server) handlePlainHTTP(conn net.Conn, reader *bufio.Reader, headers []
 	}
 
 	urlStr := path
+	if s.cacheAllowed(method, urlStr, headerMap, body) {
+		if cached := s.cache.Get(urlStr); cached != nil {
+			if origin != "" {
+				cached = injectCORSHeaders(cached, origin)
+			}
+			_, _ = conn.Write(cached)
+			return
+		}
+	}
+
 	response := s.fronter.Relay(method, urlStr, headerMap, body)
+	if s.cacheAllowed(method, urlStr, headerMap, body) {
+		ttl := s.cache.ParseTTL(response, urlStr)
+		if ttl > 0 {
+			s.cache.Put(urlStr, response, ttl)
+		}
+	}
 	if origin != "" {
 		response = injectCORSHeaders(response, origin)
 	}
@@ -518,6 +581,28 @@ func headerValue(headers map[string]string, name string) string {
 		}
 	}
 	return ""
+}
+
+func (s *Server) cacheAllowed(method, urlStr string, headers map[string]string, body []byte) bool {
+	if strings.ToUpper(method) != "GET" || len(body) > 0 {
+		return false
+	}
+	for _, name := range constants.UncacheableHeaderNames {
+		if headerValue(headers, name) != "" {
+			return false
+		}
+	}
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+	path := strings.ToLower(parsed.Path)
+	for _, ext := range constants.StaticExts {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 func corsPreflight(origin, acrMethod, acrHeaders string) []byte {

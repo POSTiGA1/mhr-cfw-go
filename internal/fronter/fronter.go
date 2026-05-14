@@ -72,6 +72,8 @@ type DomainFronter struct {
 	coalesce   map[string][]chan []byte
 
 	statsStop chan struct{}
+	keepalive *time.Ticker
+	warmOnce  sync.Once
 }
 
 type pooledConn struct {
@@ -128,6 +130,8 @@ func New(cfg config.Config) *DomainFronter {
 
 	f.h2 = h2.New(f.connectHost, f.sniHosts, f.verifySSL)
 	go f.statsLoop()
+	go f.keepaliveLoop()
+	go f.prewarm()
 	return f
 }
 
@@ -164,6 +168,9 @@ func buildSNIPool(frontDomain string, overrides []string) []string {
 
 func (f *DomainFronter) Close() error {
 	close(f.statsStop)
+	if f.keepalive != nil {
+		f.keepalive.Stop()
+	}
 	if f.h2 != nil {
 		_ = f.h2.Close()
 	}
@@ -713,6 +720,47 @@ func (f *DomainFronter) statsLoop() {
 			f.logStats()
 		}
 	}
+}
+
+func (f *DomainFronter) keepaliveLoop() {
+	f.keepalive = time.NewTicker(time.Duration(constants.KeepaliveInterval) * time.Second)
+	defer f.keepalive.Stop()
+	for {
+		select {
+		case <-f.statsStop:
+			return
+		case <-f.keepalive.C:
+			if strings.TrimSpace(f.authKey) == "" {
+				continue
+			}
+			payload := map[string]any{
+				"m": "HEAD",
+				"u": "http://example.com/",
+				"r": false,
+				"k": f.authKey,
+			}
+			jsonBody, _ := json.Marshal(payload)
+			path := f.execPath("example.com")
+			_, _, _, _ = f.h2.Request(context.Background(), "POST", path, f.httpHost, map[string]string{"content-type": "application/json"}, jsonBody, 20*time.Second)
+		}
+	}
+}
+
+func (f *DomainFronter) prewarm() {
+	f.warmOnce.Do(func() {
+		if strings.TrimSpace(f.authKey) == "" {
+			return
+		}
+		payload := map[string]any{
+			"m": "HEAD",
+			"u": "http://example.com/",
+			"r": false,
+			"k": f.authKey,
+		}
+		jsonBody, _ := json.Marshal(payload)
+		path := f.execPath("example.com")
+		_, _, _, _ = f.h2.Request(context.Background(), "POST", path, f.httpHost, map[string]string{"content-type": "application/json"}, jsonBody, 20*time.Second)
+	})
 }
 
 func (f *DomainFronter) logStats() {

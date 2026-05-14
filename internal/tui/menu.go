@@ -16,6 +16,7 @@ type Option struct {
 
 type Menu struct {
 	Title   string
+	Version string
 	Options []Option
 }
 
@@ -58,7 +59,10 @@ func (m *Menu) render() {
 	borderMid := "╠" + strings.Repeat("═", width+2) + "╣"
 	borderBot := "╚ " + strings.Repeat("═", width) + " ╝"
 	inner := "║" + strings.Repeat(" ", width+2) + "║"
-	tag := "Mhr-Cfw-Go V1.0"
+	tag := "Mhr-Cfw-Go"
+	if strings.TrimSpace(m.Version) != "" {
+		tag = fmt.Sprintf("Mhr-Cfw-Go v%s", m.Version)
+	}
 	link := "https://github.com/ThisIsDara/"
 
 	centerText := func(text string) string {

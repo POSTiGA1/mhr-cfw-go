@@ -52,6 +52,8 @@ func (t *Transport) ensure() {
 	}
 	tr := &http2.Transport{
 		AllowHTTP: false,
+		ReadIdleTimeout: 90 * time.Second,
+		PingTimeout:     15 * time.Second,
 		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
 			sni := t.nextSNI()
 			tlsCfg := &tls.Config{
