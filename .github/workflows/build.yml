@@ -54,7 +54,7 @@ jobs:
           go build -ldflags "-s -w" -o mhr-cfw-go-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/mhr-cfw
 
       - name: Rename Windows executable
-        if: matrix.goos == 'windows'
+        if: matrix.goos == 'windows' && matrix.goarch != 'arm64'
         shell: bash
         run: mv mhr-cfw-go-windows-${{ matrix.goarch }} mhr-cfw-go-windows-${{ matrix.goarch }}.exe
 
